@@ -1,0 +1,19 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/blueDevices/blueDevices",
+    "pages/blueWifi/blueWifi",
+    "pages/blueConnect/blueConnect",
+    "pages/wifiDevices/wifiDevices",
+    "pages/wifiConfig/wifiConfig",
+    "pages/wifiList/wifiList",
+    "pages/wifiConnect/wifiConnect"
+  ],
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#4d9efb",
+    "navigationBarTitleText": "WeChat",
+    "navigationBarTextStyle": "white"
+  },
+  "sitemapLocation": "sitemap.json"
+}
