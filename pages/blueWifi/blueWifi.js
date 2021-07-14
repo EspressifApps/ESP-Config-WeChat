@@ -4,8 +4,6 @@ const app = getApp();
 const util = require('../../utils/util.js');
 const crypto = require('../../crypto/crypto-dh.js');
 const md5 = require('../../crypto/md5.min.js');
-var sequenceControl = 0;
-var sequenceNumber = -1;
 var client = "";
 Page({
 
@@ -42,7 +40,7 @@ Page({
   bindViewConfirm: function() {
     var self = this;
     wx.navigateTo({
-      url: '/pages/blueConnect/blueConnect?deviceId=' + self.data.deviceId + "&ssid=" + escape(self.data.ssid) + "&bssid=" + self.data.bssid + "&password=" + escape(self.data.password) + "&serviceId=" + self.data.serviceId + "&uuid=" + self.data.uuid + "&sequenceControl=" + sequenceControl,
+      url: '/pages/blueConnect/blueConnect?deviceId=' + self.data.deviceId + "&ssid=" + escape(self.data.ssid) + "&bssid=" + self.data.bssid + "&password=" + escape(self.data.password) + "&serviceId=" + self.data.serviceId + "&uuid=" + self.data.uuid,
     })
     this.setData({
       hiddenModal: true,
@@ -61,17 +59,16 @@ Page({
   },
   blueConnect: function (event) {
     var self = this;
-    sequenceControl = 0;
-    sequenceNumber = -1;
+    app.data.sequenceControl = 0;
+    app.data.sequenceNumber = -1;
     self.setData({
       fragList: [],
       wifiList: [],
       flagEnd: false,
       serviceId: "",
-      uuid: "",
+      uuid: ""
     });
     wx.createBLEConnection({
-      // 这里的 deviceId 需要已经通过 createBLEConnection 与对应设备建立链接 
       deviceId: self.data.deviceId,
       timeout: 10000,
       success: function (res) {
@@ -108,7 +105,6 @@ Page({
   getDeviceServices: function (deviceId) {
     var self = this;
     wx.getBLEDeviceServices({
-      // 这里的 deviceId 需要已经通过 createBLEConnection 与对应设备建立链接 
       deviceId: deviceId,
       success: function (res) {
         var services = res.services;
@@ -130,7 +126,6 @@ Page({
   getDeviceCharacteristics: function (deviceId, serviceId) {
     var self = this;
     wx.getBLEDeviceCharacteristics({
-      // 这里的 deviceId 需要已经通过 createBLEConnection 与对应设备建立链接 
       deviceId: deviceId,
       serviceId: serviceId,
       success: function (res) {
@@ -169,7 +164,7 @@ Page({
     data.push(pgkLen1);
     data.push(pgkLen2);
     var frameControl = util.getFrameCTRLValue(false, false, util.DIRECTION_OUTPUT, false, false);
-    var value = util.writeData(util.PACKAGE_VALUE, util.SUBTYPE_NEG, frameControl, sequenceControl, data.length, data);
+    var value = util.writeData(util.PACKAGE_VALUE, util.SUBTYPE_NEG, frameControl, app.data.sequenceControl, data.length, data);
     var typedArray = new Uint8Array(value);
     console.log("notifyDevice:", value)
     wx.writeBLECharacteristicValue({
@@ -189,11 +184,11 @@ Page({
   },
   getSecret: function (deviceId, serviceId, characteristicId, client, kBytes, pBytes, gBytes, data) {
     var self = this, obj = {}, frameControl = 0;
-    sequenceControl = parseInt(sequenceControl) + 1;
+    app.data.sequenceControl = parseInt(app.data.sequenceControl) + 1;
     const encrypt = false
     const checksum = false
     if (!util._isEmpty(data)) {
-      obj = util.isSubcontractor(data, checksum, sequenceControl);
+      obj = util.isSubcontractor(data, checksum, app.data.sequenceControl);
       frameControl = util.getFrameCTRLValue(encrypt, checksum, util.DIRECTION_OUTPUT, false, obj.flag);
     } else {
       data = [];
@@ -216,10 +211,10 @@ Page({
       data.push(kLen1);
       data.push(kLen2);
       data = data.concat(kBytes);
-      obj = util.isSubcontractor(data, checksum, sequenceControl);
+      obj = util.isSubcontractor(data, checksum, app.data.sequenceControl);
       frameControl = util.getFrameCTRLValue(encrypt, checksum, util.DIRECTION_OUTPUT, false, obj.flag);
     }
-    var value = util.writeData(util.PACKAGE_VALUE, util.SUBTYPE_NEG, frameControl, sequenceControl, obj.len, obj.lenData);
+    var value = util.writeData(util.PACKAGE_VALUE, util.SUBTYPE_NEG, frameControl, app.data.sequenceControl, obj.len, obj.lenData);
     var typedArray = new Uint8Array(value);
     wx.writeBLECharacteristicValue({
       deviceId: deviceId,
@@ -230,10 +225,36 @@ Page({
         if (obj.flag) {
           self.getSecret(deviceId, serviceId, characteristicId, client, kBytes, pBytes, gBytes, obj.laveData);
         } else {
-          setTimeout(function(){
-            self.getWifiList(deviceId, serviceId, characteristicId);
-          }, 3000)
+          // setTimeout(function(){
+          //   self.getWifiList(deviceId, serviceId, characteristicId);
+          // }, 3000)
+          self.setSecret(deviceId, serviceId, characteristicId);
         }
+      },
+      fail: function (res) {
+        self.showFailToast();
+      }
+    })
+  },
+  setSecret (deviceId, serviceId, characteristicId) {
+    const self = this;
+    let value = 0;
+    value |= 1; // 数据包校验
+    value |= 0b10; //数据包加密
+    let data = [value]
+    app.data.sequenceControl = parseInt(app.data.sequenceControl) + 1;
+    let frameControl = util.getFrameCTRLValue(false, false, util.DIRECTION_OUTPUT, false, false);
+    value = util.writeData(util.PACKAGE_CONTROL_VALUE, util.SUBTYPE_SET_SEC_MODE, frameControl, app.data.sequenceControl, data.length, data);
+    var typedArray = new Uint8Array(value);
+    wx.writeBLECharacteristicValue({
+      deviceId: deviceId,
+      serviceId: serviceId,
+      characteristicId: characteristicId,
+      value: typedArray.buffer,
+      success: function (res) {
+        setTimeout(function(){
+          self.getWifiList(deviceId, serviceId, characteristicId);
+        }, 3000)
       },
       fail: function (res) {
         self.showFailToast();
@@ -242,10 +263,9 @@ Page({
   },
   getWifiList: function (deviceId, serviceId, characteristicId) {
     var self = this;
-    var frameControl = util.getFrameCTRLValue(true, false, util.DIRECTION_OUTPUT, false, false);
-    sequenceControl = parseInt(sequenceControl) + 1;
-    var value = util.writeData(util.PACKAGE_CONTROL_VALUE, util.SUBTYPE_WIFI_NEG, frameControl, sequenceControl, 0, null);
-    console.log("getWifiList:", value)
+    var frameControl = util.getFrameCTRLValue(false, false, util.DIRECTION_OUTPUT, false, false);
+    app.data.sequenceControl = parseInt(app.data.sequenceControl) + 1;
+    var value = util.writeData(util.PACKAGE_CONTROL_VALUE, util.SUBTYPE_WIFI_NEG, frameControl, app.data.sequenceControl, 0, null);
     var typedArray = new Uint8Array(value);
     wx.writeBLECharacteristicValue({
       deviceId: deviceId,
@@ -259,12 +279,14 @@ Page({
       }
     })
   },
+  // 监听特征值变化
   onNotify: function () {
     var self = this;
     wx.onBLECharacteristicValueChange(function (res) {
       self.analysisWifi(util.ab2hex(res.value));
     })
   },
+  // 启用特征值变化
   openNotify: function (deviceId, serviceId, characteristicId) {
     var self = this;
     wx.notifyBLECharacteristicValueChange({
@@ -273,6 +295,7 @@ Page({
       serviceId: serviceId,
       characteristicId: app.data.characteristic_read_uuid,
       success: function (res) {
+        //通知设备交互方式（是否加密）
         self.notifyDevice(deviceId, serviceId, characteristicId);
         self.onNotify();
       },
@@ -295,18 +318,21 @@ Page({
       return false;
     }
     var sequenceNum = parseInt(list[2], 16);
-    if (sequenceNum - sequenceNumber != 1) {
+    if (sequenceNum - app.data.sequenceNumber  != 1) {
       wx.hideLoading();
       return false;
     }
-    sequenceNumber = sequenceNum;
+    app.data.sequenceNumber  = sequenceNum;
+    if (app.data.sequenceNumber  == 255) {
+      app.data.sequenceNumber  = -1
+    }
     var dataLength = parseInt(list[3], 16);
     if (dataLength == 0) {
       wx.hideLoading();
       return false;
     }
     var fragNum = util.hexToBinArray(list[1]);
-    list = util.isEncrypt(self, fragNum, list, app.data.md5Key);
+    list = util.isEncrypt(self, fragNum, list);
     fragList = fragList.concat(list);
     self.setData({
       fragList: fragList,
@@ -320,6 +346,7 @@ Page({
         var clientSecret = client.computeSecret(new Uint8Array(arr));
         var md5Key = md5.array(clientSecret);
         app.data.md5Key = md5Key;
+        console.log("md5Key", md5Key)
         self.setData({
           fragList: [],
         })
@@ -342,10 +369,9 @@ Page({
           if (i == 1) {
             rssi = parseInt(arr[i], 16);
           } else {
-            name += util.hexCharCodeToStr(arr[i]);
+            name += util.hexCharCodeToStr(arr[i].toString(16));
           }
         }
-        
         var wifiList = self.data.wifiList;
         wifiList.push({ "rssi": rssi, "SSID": name });
         self.setData({

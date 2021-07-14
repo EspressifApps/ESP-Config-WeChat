@@ -5,3 +5,7 @@
   border-bottom: 1px solid #999;
   width: 100%;
 }
+.item {
+  height: auto;
+  padding: 8rpx 0;
+}

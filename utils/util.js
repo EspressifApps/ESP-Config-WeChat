@@ -1,3 +1,5 @@
+import CryptoJS from'crypto-js';
+
 const app = getApp();
 const FRAME_CTRL_POSITION_ENCRYPTED = 0;
 const FRAME_CTRL_POSITION_CHECKSUM = 1;
@@ -21,6 +23,7 @@ const SUBTYPE_SET_PWD = 0x3;
 const SUBTYPE_WIFI_LIST_NEG = 11;
 const SUBTYPE_NEGOTIATION_NEG = 0;
 const SUBTYPE_CUSTOM_DATA = 0x13;
+const SUBTYPE_SET_SEC_MODE = 0x01;
 var DH_P = "cf5cf5c38419a724957ff5dd323b9c45c3cdd261eb740f69aa94b8bb1a5c96409153bd76b24222d03274e4725a5406092e9e82e9135c643cae98132b0d95f7d65347c68afc1e677da90e51bbab5f5cf429c291b4ba39c6b2dc5e8c7231e46aa7728e87664532cdf547be20c9a3fa8342be6e34371a27c06f7dc0edddd2f86373";
 var DH_G = "02";
 
@@ -75,8 +78,7 @@ const ab2hex = buffer => {
 //16进制转字符串
 const hexCharCodeToStr = hexCharCodeStr => {
   var trimedStr = hexCharCodeStr.trim();
-  var rawStr =
-    trimedStr.substr(0, 2).toLowerCase() === "0x" ? trimedStr.substr(2) : trimedStr;
+  var rawStr = trimedStr.substr(0, 2).toLowerCase() === "0x" ? trimedStr.substr(2) : trimedStr;
   var len = rawStr.length;
   if (len % 2 !== 0) {
     alert("Illegal Format ASCII Code!");
@@ -92,7 +94,7 @@ const hexCharCodeToStr = hexCharCodeStr => {
 }
 //过滤名称
 const filterDevice = (devices, name) => {
-  var self = this, list = [];
+  var list = [];
   for (var i = 0; i < devices.length; i++) {
     var device = devices[i];
     var re = new RegExp("^(BLUFI)");
@@ -119,15 +121,9 @@ const uint8ArrayToArray = uint8Array => {
 //16进制转二进制数组 
 const hexToBinArray = str => {
   var dec = parseInt(str, 16),
-    bin = dec.toString(2),
-    len = bin.length;
-  if (len < 8) {
-    var diff = 8 - len,
-      zeros = "";
-    for (var i = 0; i < diff; i++) {
-      zeros += "0";
-    }
-    bin = zeros + bin;
+    bin = dec.toString(2);
+  while (bin.length < 8) {
+    bin = "0" + bin
   }
   return bin.split("");
 }
@@ -250,7 +246,7 @@ const assemblyChecksum = (list, len, sequence, encrypt) => {
   return list;
 }
 //加密发送的数据
-const encrypt = (aesjs, md5Key, sequence, data, checksum) => {
+const encrypt = (sequence, data, checksum) => {
   var iv = generateAESIV(sequence), sumArr = [], list = [];
   if (checksum) {
     var len = data.length - 2;
@@ -259,14 +255,24 @@ const encrypt = (aesjs, md5Key, sequence, data, checksum) => {
   } else {
     list = data;
   }
-  var encryptData = uint8ArrayToArray(blueAesEncrypt(aesjs, md5Key, iv, new Uint8Array(list)));
+  console.log('加密')
+  var encryptData = blueAesEncrypt(iv, ab2hex(list).join(''));
   return encryptData.concat(sumArr);
 }
 //判断返回的数据是否加密
-const isEncrypt = (self, fragNum, list, md5Key) => {
+const isEncrypt = (self, frameCtrl, list) => {
   var checksum = [], checkData = [];
-  if (fragNum[7] == "1") {//返回数据加密
-    if (fragNum[6] == "1") {
+  if (frameCtrl[7] == "1") {//返回数据加密
+    var iv = generateAESIV(parseInt(list[2], 16));
+    console.log('解密')
+    console.log(iv)
+    list = list.slice(4) // 解密数据不含 Header
+    let byteArray = list.map(item => parseInt(item, 16))
+    let decryptPkg = blueAesDecrypt(iv, ab2hex(byteArray).join(''))
+    console.log("DecryptPkg = ",  decryptPkg)
+    list = ab2hex(decryptPkg);
+    if (frameCtrl[6] == "1") {//数据有校验
+      console.log('校验')
       var len = list.length - 2;
       // checkData = list.slice(2, len);
       // checksum = list.slice(len);
@@ -276,18 +282,17 @@ const isEncrypt = (self, fragNum, list, md5Key) => {
       // var checksumByte2 = (crc >> 8) & 0xff;
       list = list.slice(0, len);
     }
-    var iv = this.generateAESIV(parseInt(list[2], 16));
-    if (fragNum[3] == "0") {//未分包
-      list = list.slice(4);
+
+    if (frameCtrl[3] == "0") {//未分包
       self.setData({
         flagEnd: true
       })
     } else {//分包
-      list = list.slice(6);
+      list = list.slice(2);
     }
-    list = uint8ArrayToArray(this.blueAesDecrypt(aesjs, md5Key, iv, new Uint8Array(list)));
+
   } else {//返回数据未加密
-    if (fragNum[6] == "1") {
+    if (frameCtrl[6] == "1") {
       var len = list.length - 2;
       // checkData = list.slice(2, len);
       // checksum = list.slice(len);
@@ -296,7 +301,7 @@ const isEncrypt = (self, fragNum, list, md5Key) => {
       // var checksumByte2 = (crc >> 8) & 0xff;
       list = list.slice(0, len);
     }
-    if (fragNum[3] == "0") {//未分包
+    if (frameCtrl[3] == "0") {//未分包
       list = list.slice(4);
       self.setData({
         flagEnd: true
@@ -320,16 +325,29 @@ const blueMd5 = (md5, key) => {
   return arr;
 }
 // aes加密
-const blueAesEncrypt = (aesjs, mdKey, iv, bytes) => {
-  var aesOfb = new aesjs.ModeOfOperation.ofb(mdKey, iv);
-  var encryptedBytes = aesOfb.encrypt(bytes);
-  return encryptedBytes;
+const blueAesEncrypt = (iv, bytes) => {
+  bytes = CryptoJS.enc.Hex.parse(bytes);
+  let mdKey = ab2hex(app.data.md5Key).join('');
+  iv = ab2hex(iv).join('');
+  const encryptedStr = CryptoJS.AES.encrypt(bytes, CryptoJS.enc.Hex.parse(mdKey), {
+    iv: CryptoJS.enc.Hex.parse(iv),
+    mode: CryptoJS.mode.CFB, 
+    padding: CryptoJS.pad.NoPadding
+});
+return hexByInt(encryptedStr.ciphertext.toString())
 }
 //aes解密
-const blueAesDecrypt = (aesjs, mdKey, iv, bytes) => {
-  var aesOfb = new aesjs.ModeOfOperation.ofb(mdKey, iv);
-  var decryptedBytes = aesOfb.decrypt(bytes);
-  return decryptedBytes;
+const blueAesDecrypt = (iv, bytes) => {
+  let mdKey = ab2hex(app.data.md5Key).join('');
+  iv = ab2hex(iv).join('');
+  bytes = CryptoJS.enc.Hex.parse(bytes);
+  bytes = CryptoJS.enc.Base64.stringify(bytes);
+  const decryptStr = CryptoJS.AES.decrypt(bytes, CryptoJS.enc.Hex.parse(mdKey), {
+    iv:  CryptoJS.enc.Hex.parse(iv),
+    mode: CryptoJS.mode.CFB, 
+    padding: CryptoJS.pad.NoPadding
+  });
+  return hexByInt(decryptStr.toString())
 }
 //获取Frame Control
 const getFrameCTRLValue = (encrypted, checksum, direction, requireAck, frag) => {
@@ -414,6 +432,7 @@ module.exports = {
   SUBTYPE_SET_PWD: SUBTYPE_SET_PWD,
   SUBTYPE_END: SUBTYPE_END,
   SUBTYPE_CUSTOM_DATA: SUBTYPE_CUSTOM_DATA,
+  SUBTYPE_SET_SEC_MODE: SUBTYPE_SET_SEC_MODE,
   descSucList: descSucList,
   descFailList: descFailList,
   successList: successList,

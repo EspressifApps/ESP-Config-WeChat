@@ -8,7 +8,9 @@ App({
     mtu: 19,
     constMtu: 128,
     md5Key: "",
-    platform: ''
+    platform: '',
+    sequenceControl: -1,
+    sequenceNumber: -1
   },
   
   onLaunch: function () {

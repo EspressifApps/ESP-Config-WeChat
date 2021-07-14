@@ -1,11 +1,9 @@
 //获取应用实例
 const app = getApp()
 const util = require('../../utils/util.js');
-const aesjs = require('../../crypto/aes.js');
+
 const timeOut = 20;//超时时间
 var timeId = "";
-var sequenceControl = 0;
-var sequenceNumber = -1;
 Page({
   data: {
     failure: false,
@@ -39,16 +37,16 @@ Page({
   writeDeviceStart: function (deviceId, serviceId, characteristicId, data) {
     var self = this, obj = {}, frameControl = 0;
     self.setProcess(40, util.descSucList[4]);
-    sequenceControl = parseInt(sequenceControl) + 1;
+    app.data.sequenceControl = parseInt(app.data.sequenceControl) + 1;
     if (!util._isEmpty(data)) {
-      obj = util.isSubcontractor(data, self.data.isChecksum, sequenceControl, self.data.isEncrypt);
+      obj = util.isSubcontractor(data, self.data.isChecksum, app.data.sequenceControl, self.data.isEncrypt);
       frameControl = util.getFrameCTRLValue(self.data.isEncrypt, self.data.isChecksum, util.DIRECTION_OUTPUT, false, obj.flag);
     } else {
-      obj = util.isSubcontractor([self.data.defaultData], self.data.isChecksum, sequenceControl, true);
+      obj = util.isSubcontractor([self.data.defaultData], self.data.isChecksum, app.data.sequenceControl, true);
       frameControl = util.getFrameCTRLValue(self.data.isEncrypt, self.data.isChecksum, util.DIRECTION_OUTPUT, false, obj.flag);
     }
-    var defaultData = util.encrypt(aesjs, app.data.md5Key, sequenceControl, obj.lenData, true);
-    var value = util.writeData(util.PACKAGE_CONTROL_VALUE, util.SUBTYPE_WIFI_MODEl, frameControl, sequenceControl, obj.len, defaultData);
+    var defaultData = util.encrypt(app.data.sequenceControl, obj.lenData, true);
+    var value = util.writeData(util.PACKAGE_CONTROL_VALUE, util.SUBTYPE_WIFI_MODEl, frameControl, app.data.sequenceControl, obj.len, defaultData);
     var typedArray = new Uint8Array(value)
     wx.writeBLECharacteristicValue({
       deviceId: deviceId,
@@ -71,17 +69,17 @@ Page({
   //写入路由ssid
   writeRouterSsid: function (deviceId, serviceId, characteristicId, data) {
     var self = this, obj = {}, frameControl = 0;
-    sequenceControl = parseInt(sequenceControl) + 1;
+    app.data.sequenceControl = parseInt(app.data.sequenceControl) + 1;
     if (!util._isEmpty(data)) {
-      obj = util.isSubcontractor(data, self.data.isChecksum, sequenceControl, self.data.isEncrypt);
+      obj = util.isSubcontractor(data, self.data.isChecksum, app.data.sequenceControl, self.data.isEncrypt);
       frameControl = util.getFrameCTRLValue(self.data.isEncrypt, self.data.isChecksum, util.DIRECTION_OUTPUT, false, obj.flag);
     } else {
       var ssidData = self.getCharCodeat(self.data.ssid);
-      obj = util.isSubcontractor(ssidData, self.data.isChecksum, sequenceControl, self.data.isEncrypt);
+      obj = util.isSubcontractor(ssidData, self.data.isChecksum, app.data.sequenceControl, self.data.isEncrypt);
       frameControl = util.getFrameCTRLValue(self.data.isEncrypt, self.data.isChecksum, util.DIRECTION_OUTPUT, false, obj.flag);
     }
-    var defaultData = util.encrypt(aesjs, app.data.md5Key, sequenceControl, obj.lenData, true);
-    var value = util.writeData(util.PACKAGE_VALUE, util.SUBTYPE_SET_SSID, frameControl, sequenceControl, obj.len, defaultData);
+    var defaultData = util.encrypt(app.data.sequenceControl, obj.lenData, true);
+    var value = util.writeData(util.PACKAGE_VALUE, util.SUBTYPE_SET_SSID, frameControl, app.data.sequenceControl, obj.len, defaultData);
     var typedArray = new Uint8Array(value)
     wx.writeBLECharacteristicValue({
       deviceId: deviceId,
@@ -103,17 +101,17 @@ Page({
   //写入路由密码
   writeDevicePwd: function (deviceId, serviceId, characteristicId, data) {
     var self = this, obj = {}, frameControl = 0;
-    sequenceControl = parseInt(sequenceControl) + 1;
+    app.data.sequenceControl = parseInt(app.data.sequenceControl) + 1;
     if (!util._isEmpty(data)) {
-      obj = util.isSubcontractor(data, self.data.isChecksum, sequenceControl, self.data.isEncrypt);
+      obj = util.isSubcontractor(data, self.data.isChecksum, app.data.sequenceControl, self.data.isEncrypt);
       frameControl = util.getFrameCTRLValue(self.data.isEncrypt, self.data.isChecksum, util.DIRECTION_OUTPUT, false, obj.flag);
     } else {
       var pwdData = self.getCharCodeat(self.data.password);
-      obj = util.isSubcontractor(pwdData, self.data.isChecksum, sequenceControl, self.data.isEncrypt);
+      obj = util.isSubcontractor(pwdData, self.data.isChecksum, app.data.sequenceControl, self.data.isEncrypt);
       frameControl = util.getFrameCTRLValue(self.data.isEncrypt, self.data.isChecksum, util.DIRECTION_OUTPUT, false, obj.flag);
     }
-    var defaultData = util.encrypt(aesjs, app.data.md5Key, sequenceControl, obj.lenData, true);
-    var value = util.writeData(util.PACKAGE_VALUE, util.SUBTYPE_SET_PWD, frameControl, sequenceControl, obj.len, defaultData);
+    var defaultData = util.encrypt(app.data.sequenceControl, obj.lenData, true);
+    var value = util.writeData(util.PACKAGE_VALUE, util.SUBTYPE_SET_PWD, frameControl, app.data.sequenceControl, obj.len, defaultData);
     var typedArray = new Uint8Array(value)
     wx.writeBLECharacteristicValue({
       deviceId: deviceId,
@@ -135,9 +133,9 @@ Page({
   //告知设备写入结束
   writeDeviceEnd: function (deviceId, serviceId, characteristicId) {
     var self = this;
-    sequenceControl = parseInt(sequenceControl) + 1;
+    app.data.sequenceControl = parseInt(app.data.sequenceControl) + 1;
     var frameControl = util.getFrameCTRLValue(self.data.isEncrypt, false, util.DIRECTION_OUTPUT, false, false);
-    var value = util.writeData(self.data.PACKAGE_CONTROL_VALUE, util.SUBTYPE_END, frameControl, sequenceControl, 0, null);
+    var value = util.writeData(self.data.PACKAGE_CONTROL_VALUE, util.SUBTYPE_END, frameControl, app.data.sequenceControl, 0, null);
     var typedArray = new Uint8Array(value)
     wx.writeBLECharacteristicValue({
       deviceId: deviceId,
@@ -216,7 +214,7 @@ Page({
         desc: util.descSucList[6]
       });
       clearInterval(timeId);
-      sequenceControl = 0;
+      app.data.sequenceControl = 0;
       setTimeout(function () {
         wx.reLaunch({
           url: '/pages/index/index'
@@ -237,6 +235,7 @@ Page({
   getResultType: function(list) {
     var self = this;
     var result = self.data.result;
+    console.log(list)
     if (list.length < 4) {
       self.setFailProcess(true, util.descFailList[4]);
       return false;
@@ -244,19 +243,27 @@ Page({
     var val = parseInt(list[0], 16),
       type = val & 3,
       subType = val >> 2;
-    // var sequenceNum = parseInt(list[2], 16);
-    // if (sequenceNum - sequenceNumber != 1) {
-    //   console.log("fail");
-    //   return false;
-    // }
-    // sequenceNumber = sequenceNum;
+      console.log(type, subType, self.data.flagEnd)
+    if (type != parseInt(util.PACKAGE_VALUE)) {
+      self.setFailProcess(true, util.descFailList[4]);
+      return false;
+    }
+    var sequenceNum = parseInt(list[2], 16);
+    if (sequenceNum - app.data.sequenceNumber  != 1) {
+      self.setFailProcess(true, util.descFailList[4]);
+      return false;
+    }
+    app.data.sequenceNumber  = sequenceNum;
+    if (app.data.sequenceNumber  == 255) {
+      app.data.sequenceNumber  = -1
+    }
     var dataLength = parseInt(list[3], 16);
     if (dataLength == 0) {
       self.setFailProcess(true, util.descFailList[4]);
       return false;
     }
     var fragNum = util.hexToBinArray(list[1]);
-    list = util.isEncrypt(self, fragNum, list, app.data.md5Key);
+    list = util.isEncrypt(self, fragNum, list);
     result = result.concat(list);
     self.setData({
       result: result,
@@ -336,7 +343,6 @@ Page({
       uuid: options.uuid,
       serviceId: options.serviceId,
     })
-    sequenceControl = options.sequenceControl;
     self.blueConnect();
   },
   /**

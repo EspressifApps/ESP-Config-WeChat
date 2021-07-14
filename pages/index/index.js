@@ -1,10 +1,7 @@
 //index.js
 //获取应用实例
 const app = getApp();
-const crypto = require('../../crypto/crypto-dh.js');
-const md5 = require('../../crypto/md5.min.js');
 const util = require('../../utils/util.js');
-const aesjs = require('../../crypto/aes.js');
 Page({
   data: {
     

@@ -16,7 +16,6 @@ Page({
     wx.navigateTo({
       url: '/pages/blueWifi/blueWifi?deviceId=' + deviceId,
     })
-    
   },
   
   getBluDevice: function () {
@@ -48,7 +47,7 @@ Page({
   onLoad: function () {
     var self = this;
     wx.setNavigationBarTitle({
-      title: 'Blue扫描'
+      title: 'BluFi扫描'
     });
     wx.showLoading({
       title: '设备扫描中...',
