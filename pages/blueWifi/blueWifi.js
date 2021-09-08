@@ -365,13 +365,15 @@ Page({
       curLength += (1 + len);
       if (len > 0 && curLength < totalLength) {
         var rssi = 0, name = "";
+        let list = []
         for (var i = 1; i <= len; i++) {
           if (i == 1) {
             rssi = parseInt(arr[i], 16);
           } else {
-            name += util.hexCharCodeToStr(arr[i].toString(16));
+            list.push(parseInt(arr[i], 16))
           }
         }
+        name = decodeURIComponent(escape(String.fromCharCode(...list)))
         var wifiList = self.data.wifiList;
         wifiList.push({ "rssi": rssi, "SSID": name });
         self.setData({
