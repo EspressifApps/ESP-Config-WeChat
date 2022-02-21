@@ -3,11 +3,7 @@
     "pages/index/index",
     "pages/blueDevices/blueDevices",
     "pages/blueWifi/blueWifi",
-    "pages/blueConnect/blueConnect",
-    "pages/wifiDevices/wifiDevices",
-    "pages/wifiConfig/wifiConfig",
-    "pages/wifiList/wifiList",
-    "pages/wifiConnect/wifiConnect"
+    "pages/blueConnect/blueConnect"
   ],
   "window": {
     "backgroundTextStyle": "light",
