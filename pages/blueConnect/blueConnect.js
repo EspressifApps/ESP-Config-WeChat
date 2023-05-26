@@ -9,8 +9,8 @@ Page({
     failure: false,
     value: 0,
     desc: "Device connecting...",
-    isChecksum: true,
-    isEncrypt: true,
+    isChecksum: false,
+    isEncrypt: false,
     flagEnd: false,
     defaultData: 1,
     ssidType: 2,
@@ -45,8 +45,8 @@ Page({
       obj = util.isSubcontractor([self.data.defaultData], self.data.isChecksum, app.data.sequenceControl, true);
       frameControl = util.getFrameCTRLValue(self.data.isEncrypt, self.data.isChecksum, util.DIRECTION_OUTPUT, false, obj.flag);
     }
-    var defaultData = util.encrypt(app.data.sequenceControl, obj.lenData, true);
-    var value = util.writeData(util.PACKAGE_CONTROL_VALUE, util.SUBTYPE_WIFI_MODEl, frameControl, app.data.sequenceControl, obj.len, defaultData);
+    // var defaultData = util.encrypt(app.data.sequenceControl, obj.lenData, true);
+    var value = util.writeData(util.PACKAGE_CONTROL_VALUE, util.SUBTYPE_WIFI_MODEl, frameControl, app.data.sequenceControl, obj.len, obj.lenData);
     var typedArray = new Uint8Array(value)
     wx.writeBLECharacteristicValue({
       deviceId: deviceId,
@@ -78,8 +78,8 @@ Page({
       obj = util.isSubcontractor(ssidData, self.data.isChecksum, app.data.sequenceControl, self.data.isEncrypt);
       frameControl = util.getFrameCTRLValue(self.data.isEncrypt, self.data.isChecksum, util.DIRECTION_OUTPUT, false, obj.flag);
     }
-    var defaultData = util.encrypt(app.data.sequenceControl, obj.lenData, true);
-    var value = util.writeData(util.PACKAGE_VALUE, util.SUBTYPE_SET_SSID, frameControl, app.data.sequenceControl, obj.len, defaultData);
+    // var defaultData = util.encrypt(app.data.sequenceControl, obj.lenData, true);
+    var value = util.writeData(util.PACKAGE_VALUE, util.SUBTYPE_SET_SSID, frameControl, app.data.sequenceControl, obj.len, obj.lenData);
     var typedArray = new Uint8Array(value)
     wx.writeBLECharacteristicValue({
       deviceId: deviceId,
@@ -110,8 +110,8 @@ Page({
       obj = util.isSubcontractor(pwdData, self.data.isChecksum, app.data.sequenceControl, self.data.isEncrypt);
       frameControl = util.getFrameCTRLValue(self.data.isEncrypt, self.data.isChecksum, util.DIRECTION_OUTPUT, false, obj.flag);
     }
-    var defaultData = util.encrypt(app.data.sequenceControl, obj.lenData, true);
-    var value = util.writeData(util.PACKAGE_VALUE, util.SUBTYPE_SET_PWD, frameControl, app.data.sequenceControl, obj.len, defaultData);
+    // var defaultData = util.encrypt(app.data.sequenceControl, obj.lenData, true);
+    var value = util.writeData(util.PACKAGE_VALUE, util.SUBTYPE_SET_PWD, frameControl, app.data.sequenceControl, obj.len, obj.lenData);
     var typedArray = new Uint8Array(value)
     wx.writeBLECharacteristicValue({
       deviceId: deviceId,

@@ -59,7 +59,7 @@ Page({
   },
   blueConnect: function (event) {
     var self = this;
-    app.data.sequenceControl = 0;
+    app.data.sequenceControl = -1;
     app.data.sequenceNumber = -1;
     self.setData({
       fragList: [],
@@ -222,6 +222,7 @@ Page({
       characteristicId: characteristicId,
       value: typedArray.buffer,
       success: function (res) {
+        console.log('getSecret-suc', res)
         if (obj.flag) {
           self.getSecret(deviceId, serviceId, characteristicId, client, kBytes, pBytes, gBytes, obj.laveData);
         } else {
@@ -232,6 +233,7 @@ Page({
         }
       },
       fail: function (res) {
+        console.log('getSecret-error', res)
         self.showFailToast();
       }
     })
@@ -239,8 +241,8 @@ Page({
   setSecret (deviceId, serviceId, characteristicId) {
     const self = this;
     let value = 0;
-    value |= 1; // 数据包校验
-    value |= 0b10; //数据包加密
+    // value |= 1; // 数据包校验
+    // value |= 0b10; //数据包加密
     let data = [value]
     app.data.sequenceControl = parseInt(app.data.sequenceControl) + 1;
     let frameControl = util.getFrameCTRLValue(false, false, util.DIRECTION_OUTPUT, false, false);
@@ -296,8 +298,9 @@ Page({
       characteristicId: app.data.characteristic_read_uuid,
       success: function (res) {
         //通知设备交互方式（是否加密）
-        self.notifyDevice(deviceId, serviceId, characteristicId);
+        // self.notifyDevice(deviceId, serviceId, characteristicId);
         self.onNotify();
+        self.getWifiList(deviceId, serviceId, characteristicId);
       },
       fail: function (res) {
         self.showFailToast();
@@ -331,6 +334,7 @@ Page({
       wx.hideLoading();
       return false;
     }
+    console.log('fragNum', list)
     var fragNum = util.hexToBinArray(list[1]);
     list = util.isEncrypt(self, fragNum, list);
     fragList = fragList.concat(list);
@@ -346,7 +350,6 @@ Page({
         var clientSecret = client.computeSecret(new Uint8Array(arr));
         var md5Key = md5.array(clientSecret);
         app.data.md5Key = md5Key;
-        console.log("md5Key", md5Key)
         self.setData({
           fragList: [],
         })
@@ -373,7 +376,7 @@ Page({
             list.push(parseInt(arr[i], 16))
           }
         }
-        name = decodeURIComponent(escape(String.fromCharCode(...list)))
+        name = decodeURIComponent(encodeURIComponent(String.fromCharCode(...list)))
         var wifiList = self.data.wifiList;
         wifiList.push({ "rssi": rssi, "SSID": name });
         self.setData({
