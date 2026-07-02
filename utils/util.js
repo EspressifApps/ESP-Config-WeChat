@@ -93,12 +93,21 @@ const hexCharCodeToStr = hexCharCodeStr => {
   return resultStr.join("");
 }
 //过滤名称
-const filterDevice = (devices, name) => {
+const escapeRegExp = (str) => {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+const filterDevice = (devices, nameField, options) => {
+  options = options || {};
+  var filterEnabled = options.filterEnabled !== false;
+  var prefix = options.prefix || "BLUFI";
+  if (!filterEnabled) {
+    return devices.slice();
+  }
   var list = [];
+  var re = new RegExp("^" + escapeRegExp(prefix));
   for (var i = 0; i < devices.length; i++) {
     var device = devices[i];
-    var re = new RegExp("^(BLUFI)");
-    if (re.test(device[name])) {
+    if (device[nameField] && re.test(device[nameField])) {
       list.push(device);
     }
   }

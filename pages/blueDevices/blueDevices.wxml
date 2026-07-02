@@ -1,6 +1,25 @@
 <!--index.wxml-->
+<view class="filter-bar">
+  <view class="filter-row">
+    <text class="filter-label">名称过滤</text>
+    <switch checked="{{filterEnabled}}" bindchange="bindFilterEnabledChange" color="#4d9efb"/>
+  </view>
+  <view class="filter-row" wx:if="{{filterEnabled}}">
+    <text class="filter-label">过滤前缀</text>
+    <input
+      class="filter-input"
+      value="{{filterPrefix}}"
+      placeholder="例如 BLUFI"
+      bindinput="bindFilterPrefixInput"
+      bindconfirm="bindFilterPrefixConfirm"
+      bindblur="bindFilterPrefixConfirm"
+    />
+  </view>
+  <text class="filter-tip" wx:if="{{filterEnabled}}">仅显示名称以「{{filterPrefix}}」开头的设备</text>
+  <text class="filter-tip" wx:else>显示所有扫描到的蓝牙设备</text>
+</view>
 <view class="container">
-  <view data-value="{{item.deviceId}}" bindtap="bindViewConnect" wx:for="{{deviceList}}" class="item" wx:key="*this">
+  <view data-value="{{item.deviceId}}" bindtap="bindViewConnect" wx:for="{{deviceList}}" class="item" wx:key="deviceId">
     <view class="item-img">
     <image class='bluetooth-img' mode='aspectFit' src='../../images/bluetooth.png'></image>
     </view>
@@ -9,5 +28,8 @@
       <text class="text-rssi">Rssi: {{item.RSSI}}</text>
       <text class="text-rssi">deviceId: {{item.deviceId}}</text>
     </view>
+  </view>
+  <view class="empty-tip" wx:if="{{deviceList.length === 0}}">
+    <text>未发现设备，请确认设备已开启并处于配网模式</text>
   </view>
 </view>
